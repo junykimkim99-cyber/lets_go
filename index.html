@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>2026 운세 생성기</title>
+  <!-- 카카오 SDK -->
+  <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js" integrity="sha384-DKYJZ8NLiK8MN4/C5P2dtSmLQ4KwPaoqAfyA/DfmEc1VDxu4yyC7wy6K1Ber7nYD" crossorigin="anonymous"></script>
   <style>
     :root{
       --bg:#0b0f1a;
@@ -310,6 +312,43 @@
       color:rgba(0,0,0,.70);
     }
 
+    /* 공유 버튼 */
+    .share-section{
+      margin-top:16px;
+      padding-top:16px;
+      border-top:1px solid var(--line);
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .share-btn{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:12px 18px;
+      border-radius:12px;
+      font-size:14px;
+      font-weight:500;
+      cursor:pointer;
+      border:none;
+      transition:transform .06s ease, filter .2s ease;
+    }
+    .share-btn:hover{ filter:brightness(1.05); }
+    .share-btn:active{ transform:translateY(1px); }
+    .share-btn.kakao{
+      background:#FEE500;
+      color:#191919;
+    }
+    .share-btn.kakao svg{
+      width:20px;
+      height:20px;
+    }
+    .share-label{
+      font-size:13px;
+      color:var(--muted);
+    }
+
     footer{
       max-width:980px;
       margin:0 auto;
@@ -421,6 +460,14 @@
           <h3>🎯 2026 한 줄 조언</h3>
           <p id="adviceText"></p>
           <div class="quote" id="debugQuote"></div>
+        </div>
+
+        <div class="share-section">
+          <span class="share-label">결과 공유하기</span>
+          <button type="button" class="share-btn kakao" id="kakaoShareBtn">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.477 3 2 6.463 2 10.739c0 2.756 1.837 5.174 4.592 6.567-.147.526-.532 1.905-.61 2.2-.097.37.135.365.287.266.119-.077 1.889-1.283 2.655-1.803.672.095 1.366.145 2.076.145 5.523 0 10-3.463 10-7.375C21 6.463 17.523 3 12 3z"/></svg>
+            카카오톡 공유
+          </button>
         </div>
       </div>
     </section>
@@ -809,6 +856,75 @@
       localStorage.setItem(THEME_KEY, currentTheme);
       applyTheme(currentTheme);
     });
+
+    // -----------------------------
+    // 카카오톡 공유
+    // -----------------------------
+    // 카카오 개발자 사이트에서 JavaScript 키를 발급받아 아래에 입력하세요
+    // https://developers.kakao.com/console/app
+    const KAKAO_JS_KEY = "YOUR_KAKAO_JAVASCRIPT_KEY";
+
+    let kakaoInitialized = false;
+    let lastFortuneData = null;
+
+    function initKakao(){
+      if(kakaoInitialized) return true;
+      if(KAKAO_JS_KEY === "YOUR_KAKAO_JAVASCRIPT_KEY"){
+        alert("카카오 JavaScript 키를 설정해주세요.\n\n1. https://developers.kakao.com 에서 앱 등록\n2. 앱 키 > JavaScript 키 복사\n3. index.html에서 KAKAO_JS_KEY 값 수정");
+        return false;
+      }
+      try {
+        Kakao.init(KAKAO_JS_KEY);
+        kakaoInitialized = true;
+        return true;
+      } catch(e) {
+        console.error("카카오 SDK 초기화 실패:", e);
+        alert("카카오 SDK 초기화에 실패했습니다.");
+        return false;
+      }
+    }
+
+    function shareToKakao(){
+      if(!lastFortuneData){
+        alert("먼저 운세를 생성해주세요.");
+        return;
+      }
+      if(!initKakao()) return;
+
+      const { nm, tone, scores, texts } = lastFortuneData;
+      const avgScore = Math.round((scores.workScore + scores.moneyScore + scores.loveScore + scores.healthScore) / 4);
+
+      Kakao.Share.sendDefault({
+        objectType: "feed",
+        content: {
+          title: `${nm}님의 2026 운세`,
+          description: `올해 키워드: ${tone.key} | 종합점수: ${avgScore}점\n${texts.advice}`,
+          imageUrl: "https://developers.kakao.com/assets/img/about/logos/kakaolink/kakaolink_btn_medium.png",
+          link: {
+            mobileWebUrl: window.location.href,
+            webUrl: window.location.href
+          }
+        },
+        buttons: [
+          {
+            title: "나도 운세 보기",
+            link: {
+              mobileWebUrl: window.location.href,
+              webUrl: window.location.href
+            }
+          }
+        ]
+      });
+    }
+
+    // 결과 렌더링 시 데이터 저장
+    const originalRenderFortune = renderFortune;
+    renderFortune = function(data){
+      lastFortuneData = data;
+      originalRenderFortune(data);
+    };
+
+    document.getElementById("kakaoShareBtn").addEventListener("click", shareToKakao);
   </script>
 </body>
 </html>
