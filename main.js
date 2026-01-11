@@ -72,11 +72,6 @@ function lifePathNumber(y, mo, d){
   return sum === 0 ? 9 : sum;
 }
 
-function bmi(heightCm, weightKg){
-  const h = heightCm / 100;
-  return weightKg / (h*h);
-}
-
 // -----------------------------
 // Text banks
 // -----------------------------
@@ -133,6 +128,25 @@ const monthFocus = [
   "7~8월: 집중/몰입", "9~10월: 수확/정산", "11~12월: 리셋/재설계"
 ];
 
+// 목표 달성 확률에 따른 조언
+const goalAdviceBank = {
+  high: [
+    "올해 운세와 목표가 잘 맞아떨어집니다! 꾸준히 실행하면 좋은 결과가 기대돼요.",
+    "목표 달성에 유리한 흐름입니다. 중간중간 작은 성과를 축하하며 나아가세요.",
+    "운세가 목표를 응원하고 있어요. 자신감을 갖고 도전하세요!"
+  ],
+  medium: [
+    "목표 달성 가능성이 있지만, 꾸준한 노력이 필요해요. 포기하지 마세요!",
+    "올해 흐름을 잘 타면 목표에 가까워질 수 있어요. 유연하게 조정하며 나아가세요.",
+    "중간 점검을 자주 하면서 방향을 수정하면 목표에 도달할 수 있습니다."
+  ],
+  low: [
+    "목표를 더 작은 단위로 쪼개보세요. 작은 성공이 쌓이면 큰 변화가 옵니다.",
+    "올해는 준비의 해일 수 있어요. 기반을 다지면 내년에 더 큰 도약이 가능합니다.",
+    "목표를 살짝 수정하거나 우선순위를 조정해보세요. 더 현실적인 계획이 도움이 됩니다."
+  ]
+};
+
 // -----------------------------
 // DOM
 // -----------------------------
@@ -151,6 +165,11 @@ const loveText = document.getElementById("loveText");
 const healthText = document.getElementById("healthText");
 const adviceText = document.getElementById("adviceText");
 const debugQuote = document.getElementById("debugQuote");
+
+const goalDisplay = document.getElementById("goalDisplay");
+const goalBar = document.getElementById("goalBar");
+const goalPercent = document.getElementById("goalPercent");
+const goalAdviceEl = document.getElementById("goalAdvice");
 
 const randomBtn = document.getElementById("randomBtn");
 
@@ -181,34 +200,23 @@ function makeScoreTile(label, value){
 // -----------------------------
 // Fortune generation
 // -----------------------------
-function computeFortune({name, birth, height, weight}){
+function computeFortune({name, birth, goal}){
   const nm = normalize(name);
+  const gl = normalize(goal);
   const parts = toDateParts(birth);
   if(!nm) return { error:"이름을 입력해주세요." };
   if(!parts) return { error:"생년월일을 올바르게 입력해주세요." };
-
-  const h = Number(height);
-  const w = Number(weight);
-  if(!Number.isFinite(h) || h < 50 || h > 250) return { error:"키(cm)를 50~250 사이로 입력해주세요." };
-  if(!Number.isFinite(w) || w < 10 || w > 250) return { error:"몸무게(kg)를 10~250 사이로 입력해주세요." };
+  if(!gl) return { error:"2026년 목표를 입력해주세요." };
 
   const zodiac = zodiacByMonthDay(parts.mo, parts.d);
   const cz = chineseZodiac(parts.y);
   const lp = lifePathNumber(parts.y, parts.mo, parts.d);
 
-  const bmiVal = bmi(h, w);
-  const bmiRounded = round1(bmiVal);
-
   // seed: 입력 + "2026" 고정
-  const seedStr = `${nm}|${birth}|${h}|${w}|2026`;
+  const seedStr = `${nm}|${birth}|${gl}|2026`;
   const seed = fnv1a32(seedStr);
   const rng = mulberry32(seed);
 
-  // flavor bias (재미용)
-  const bmiBias =
-    (bmiVal >= 18.5 && bmiVal < 25) ? 6 :
-    (bmiVal >= 25 && bmiVal < 30) ? -2 :
-    (bmiVal < 18.5) ? -1 : -4;
   const lpBias = (lp - 5) * 2; // -8 ~ +8
 
   const tone = pick(rng, toneTitles);
@@ -218,26 +226,27 @@ function computeFortune({name, birth, height, weight}){
   const workScore   = Math.round(clamp(55 + (rng()-0.5)*60 + lpBias, 0, 100));
   const moneyScore  = Math.round(clamp(50 + (rng()-0.5)*60 + (lpBias/2), 0, 100));
   const loveScore   = Math.round(clamp(52 + (rng()-0.5)*60 + (rng()-0.5)*10, 0, 100));
-  const healthScore = Math.round(clamp(58 + (rng()-0.5)*60 + bmiBias, 0, 100));
+  const healthScore = Math.round(clamp(55 + (rng()-0.5)*60 + lpBias/2, 0, 100));
+
+  // 목표 달성 확률 (운세 점수 + 목표 문자열 기반)
+  const avgScore = (workScore + moneyScore + loveScore + healthScore) / 4;
+  const goalHash = fnv1a32(gl);
+  const goalRng = mulberry32(goalHash + seed);
+  const goalBonus = (goalRng() - 0.5) * 20; // -10 ~ +10
+  const goalSuccessRate = Math.round(clamp(avgScore * 0.7 + 25 + goalBonus + lpBias, 15, 95));
+
+  // 목표 달성 조언
+  let goalAdviceCategory;
+  if(goalSuccessRate >= 70) goalAdviceCategory = "high";
+  else if(goalSuccessRate >= 45) goalAdviceCategory = "medium";
+  else goalAdviceCategory = "low";
+  const goalAdvice = pick(rng, goalAdviceBank[goalAdviceCategory]);
 
   // texts
   const work = pick(rng, workBank);
   const money = pick(rng, moneyBank);
   const love = pick(rng, loveBank);
-  const healthBase = pick(rng, healthBank);
-
-  // BMI 기반 "부드러운" 문구만 추가 (의학 조언 X)
-  let health = healthBase;
-  if(bmiVal < 18.5){
-    health += " 너무 빡세게 달리기보다는, 식사/휴식의 리듬부터 잡는 편이 좋습니다.";
-  } else if(bmiVal >= 25 && bmiVal < 30){
-    health += " 루틴을 '가볍게, 꾸준히' 가져가면 체감 성과가 잘 나옵니다.";
-  } else if(bmiVal >= 30){
-    health += " 부담 큰 목표보다, 작게 시작해서 유지하는 쪽이 훨씬 유리합니다.";
-  } else {
-    health += " 지금의 밸런스를 유지하는 게 올해 최고의 전략이에요.";
-  }
-
+  const health = pick(rng, healthBank);
   const advice = pick(rng, adviceBank);
 
   const summaryText =
@@ -246,10 +255,10 @@ function computeFortune({name, birth, height, weight}){
 
   return {
     seedStr, seed,
-    nm, birth, h, w,
+    nm, birth, goal: gl,
     zodiac, cz, lp,
-    bmiRounded,
     tone, focus,
+    goalSuccessRate, goalAdvice,
     scores: { workScore, moneyScore, loveScore, healthScore },
     texts: { work, money, love, health, advice, summaryText }
   };
@@ -267,8 +276,7 @@ function renderFortune(data){
   const pills = [
     `별자리: ${data.zodiac}`,
     `띠: ${data.cz}`,
-    `라이프패스: ${data.lp}`,
-    `BMI: ${data.bmiRounded}`
+    `라이프패스: ${data.lp}`
   ];
   for(const p of pills){
     const el = document.createElement("div");
@@ -289,12 +297,23 @@ function renderFortune(data){
   healthText.textContent = data.texts.health;
   adviceText.textContent = data.texts.advice;
 
+  // 목표 달성 확률 표시
+  goalDisplay.textContent = `"${data.goal}"`;
+  goalPercent.textContent = `${data.goalSuccessRate}%`;
+  goalAdviceEl.textContent = data.goalAdvice;
+
+  // 애니메이션으로 바 채우기
+  requestAnimationFrame(() => {
+    goalBar.style.width = data.goalSuccessRate + "%";
+  });
+
   debugQuote.textContent =
 `[생성 근거 요약]
 - seed: ${data.seed} (입력값 기반 결정론)
 - 입력: ${data.seedStr}
-- 별자리: ${data.zodiac} / 띠: ${data.cz} / 라이프패스: ${data.lp} / BMI: ${data.bmiRounded}
-- 올해 키워드: ${data.tone.key} / 포커스: ${data.focus}`;
+- 별자리: ${data.zodiac} / 띠: ${data.cz} / 라이프패스: ${data.lp}
+- 올해 키워드: ${data.tone.key} / 포커스: ${data.focus}
+- 목표 달성 확률: ${data.goalSuccessRate}%`;
 
   resultCard.style.display = "block";
   resultCard.scrollIntoView({ behavior:"smooth", block:"start" });
@@ -310,8 +329,7 @@ form.addEventListener("submit", (e) => {
   const payload = {
     name: document.getElementById("name").value,
     birth: document.getElementById("birth").value,
-    height: document.getElementById("height").value,
-    weight: document.getElementById("weight").value
+    goal: document.getElementById("goal").value
   };
 
   const res = computeFortune(payload);
@@ -324,15 +342,16 @@ form.addEventListener("submit", (e) => {
 
 randomBtn.addEventListener("click", () => {
   const samples = [
-    { name:"김준휘", birth:"1999-11-02", height:175, weight:68.5 },
-    { name:"홍길동", birth:"2001-03-14", height:172, weight:70.2 },
-    { name:"이서연", birth:"1998-07-09", height:162, weight:54.0 }
+    { name:"김준휘", birth:"1999-11-02", goal:"취업 성공하기" },
+    { name:"홍길동", birth:"2001-03-14", goal:"토익 900점 달성" },
+    { name:"이서연", birth:"1998-07-09", goal:"1000만원 모으기" },
+    { name:"박민수", birth:"2000-05-22", goal:"운동 습관 만들기" },
+    { name:"최유진", birth:"1997-12-30", goal:"새로운 취미 찾기" }
   ];
   const s = samples[Math.floor(Math.random()*samples.length)];
   document.getElementById("name").value = s.name;
   document.getElementById("birth").value = s.birth;
-  document.getElementById("height").value = s.height;
-  document.getElementById("weight").value = s.weight;
+  document.getElementById("goal").value = s.goal;
 
   clearError();
   const res = computeFortune(s);
@@ -423,7 +442,7 @@ function copyToClipboard(){
     return;
   }
 
-  const { nm, tone, scores, texts, zodiac, cz } = lastFortuneData;
+  const { nm, tone, scores, texts, zodiac, cz, goal, goalSuccessRate } = lastFortuneData;
   const avgScore = Math.round((scores.workScore + scores.moneyScore + scores.loveScore + scores.healthScore) / 4);
 
   const text = `[${nm}님의 2026 운세]
@@ -439,6 +458,9 @@ ${tone.desc}
 - 연애/관계: ${scores.loveScore}점
 - 건강/컨디션: ${scores.healthScore}점
 - 종합: ${avgScore}점
+
+2026 목표: ${goal}
+목표 달성 확률: ${goalSuccessRate}%
 
 한 줄 조언: ${texts.advice}
 

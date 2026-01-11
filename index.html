@@ -27,7 +27,7 @@
 
     <h1>2026 운세 생성기</h1>
     <p class="sub">
-      이름, 생년월일, 키, 몸무게를 입력하면 2026년 운세를 생성해드려요.
+      이름, 생년월일, 올해 목표를 입력하면 2026년 운세와 목표 달성 확률을 알려드려요.
       입력값은 저장/전송하지 않고 이 페이지 안에서만 사용됩니다.
     </p>
   </header>
@@ -52,14 +52,9 @@
               <input id="birth" name="birth" type="date" required />
             </div>
 
-            <div>
-              <label for="height">키 (cm)</label>
-              <input id="height" name="height" type="number" min="50" max="250" inputmode="numeric" placeholder="예: 175" required />
-            </div>
-
-            <div>
-              <label for="weight">몸무게 (kg)</label>
-              <input id="weight" name="weight" type="number" min="10" max="250" step="0.1" inputmode="decimal" placeholder="예: 68.5" required />
+            <div class="span2">
+              <label for="goal">2026년 목표</label>
+              <input id="goal" name="goal" type="text" maxlength="100" placeholder="예: 취업 성공하기, 10kg 감량, 자격증 따기" required />
             </div>
 
             <div class="span2">
@@ -102,6 +97,16 @@
         <div class="section">
           <h3>🧠 건강/컨디션</h3>
           <p id="healthText"></p>
+        </div>
+
+        <div class="section goal-section">
+          <h3>🚀 목표 달성 확률</h3>
+          <p class="goal-display" id="goalDisplay"></p>
+          <div class="goal-meter">
+            <div class="goal-bar" id="goalBar"></div>
+            <span class="goal-percent" id="goalPercent"></span>
+          </div>
+          <p id="goalAdvice"></p>
         </div>
 
         <div class="section">
