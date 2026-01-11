@@ -379,62 +379,88 @@ themeBtn.addEventListener("click", () => {
 });
 
 // -----------------------------
-// 카카오톡 공유
+// 이미지 저장
 // -----------------------------
-// 카카오 개발자 사이트에서 JavaScript 키를 발급받아 아래에 입력하세요
-// https://developers.kakao.com/console/app
-const KAKAO_JS_KEY = "YOUR_KAKAO_JAVASCRIPT_KEY";
-
-let kakaoInitialized = false;
-
-function initKakao(){
-  if(kakaoInitialized) return true;
-  if(KAKAO_JS_KEY === "YOUR_KAKAO_JAVASCRIPT_KEY"){
-    alert("카카오 JavaScript 키를 설정해주세요.\n\n1. https://developers.kakao.com 에서 앱 등록\n2. 앱 키 > JavaScript 키 복사\n3. main.js에서 KAKAO_JS_KEY 값 수정");
-    return false;
-  }
-  try {
-    Kakao.init(KAKAO_JS_KEY);
-    kakaoInitialized = true;
-    return true;
-  } catch(e) {
-    console.error("카카오 SDK 초기화 실패:", e);
-    alert("카카오 SDK 초기화에 실패했습니다.");
-    return false;
-  }
-}
-
-function shareToKakao(){
+function saveAsImage(){
   if(!lastFortuneData){
     alert("먼저 운세를 생성해주세요.");
     return;
   }
-  if(!initKakao()) return;
 
-  const { nm, tone, scores, texts } = lastFortuneData;
-  const avgScore = Math.round((scores.workScore + scores.moneyScore + scores.loveScore + scores.healthScore) / 4);
+  const resultCard = document.getElementById("resultCard");
+  const saveBtn = document.getElementById("saveImageBtn");
+  const originalText = saveBtn.innerHTML;
 
-  Kakao.Share.sendDefault({
-    objectType: "feed",
-    content: {
-      title: `${nm}님의 2026 운세`,
-      description: `올해 키워드: ${tone.key} | 종합점수: ${avgScore}점\n${texts.advice}`,
-      imageUrl: "https://developers.kakao.com/assets/img/about/logos/kakaolink/kakaolink_btn_medium.png",
-      link: {
-        mobileWebUrl: window.location.href,
-        webUrl: window.location.href
-      }
-    },
-    buttons: [
-      {
-        title: "나도 운세 보기",
-        link: {
-          mobileWebUrl: window.location.href,
-          webUrl: window.location.href
-        }
-      }
-    ]
+  saveBtn.innerHTML = "저장 중...";
+  saveBtn.disabled = true;
+
+  html2canvas(resultCard, {
+    backgroundColor: getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#0b0f1a',
+    scale: 2,
+    useCORS: true
+  }).then(canvas => {
+    const link = document.createElement("a");
+    link.download = `2026_운세_${lastFortuneData.nm}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+
+    saveBtn.innerHTML = originalText;
+    saveBtn.disabled = false;
+  }).catch(err => {
+    console.error("이미지 저장 실패:", err);
+    alert("이미지 저장에 실패했습니다.");
+    saveBtn.innerHTML = originalText;
+    saveBtn.disabled = false;
   });
 }
 
-document.getElementById("kakaoShareBtn").addEventListener("click", shareToKakao);
+// -----------------------------
+// 클립보드 복사
+// -----------------------------
+function copyToClipboard(){
+  if(!lastFortuneData){
+    alert("먼저 운세를 생성해주세요.");
+    return;
+  }
+
+  const { nm, tone, scores, texts, zodiac, cz } = lastFortuneData;
+  const avgScore = Math.round((scores.workScore + scores.moneyScore + scores.loveScore + scores.healthScore) / 4);
+
+  const text = `[${nm}님의 2026 운세]
+
+올해 키워드: ${tone.key}
+${tone.desc}
+
+별자리: ${zodiac} | 띠: ${cz}
+
+점수:
+- 일/학업: ${scores.workScore}점
+- 금전: ${scores.moneyScore}점
+- 연애/관계: ${scores.loveScore}점
+- 건강/컨디션: ${scores.healthScore}점
+- 종합: ${avgScore}점
+
+한 줄 조언: ${texts.advice}
+
+---
+2026 운세 생성기에서 확인하세요!`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    const copyBtn = document.getElementById("copyTextBtn");
+    const originalText = copyBtn.innerHTML;
+
+    copyBtn.classList.add("copied");
+    copyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> 복사됨!`;
+
+    setTimeout(() => {
+      copyBtn.classList.remove("copied");
+      copyBtn.innerHTML = originalText;
+    }, 2000);
+  }).catch(err => {
+    console.error("복사 실패:", err);
+    alert("클립보드 복사에 실패했습니다.");
+  });
+}
+
+document.getElementById("saveImageBtn").addEventListener("click", saveAsImage);
+document.getElementById("copyTextBtn").addEventListener("click", copyToClipboard);

@@ -343,13 +343,20 @@ body[data-theme="light"] .quote{
 }
 .share-btn:hover{ filter:brightness(1.05); }
 .share-btn:active{ transform:translateY(1px); }
-.share-btn.kakao{
-  background:#FEE500;
-  color:#191919;
+.share-btn.save-img{
+  background:linear-gradient(135deg, #667eea, #764ba2);
+  color:#fff;
 }
-.share-btn.kakao svg{
-  width:20px;
-  height:20px;
+.share-btn.copy-text{
+  background:linear-gradient(135deg, #11998e, #38ef7d);
+  color:#fff;
+}
+.share-btn svg{
+  width:18px;
+  height:18px;
+}
+.share-btn.copied{
+  background:#38ef7d;
 }
 .share-label{
   font-size:13px;
