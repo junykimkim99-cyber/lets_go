@@ -164,7 +164,6 @@ const moneyText = document.getElementById("moneyText");
 const loveText = document.getElementById("loveText");
 const healthText = document.getElementById("healthText");
 const adviceText = document.getElementById("adviceText");
-const debugQuote = document.getElementById("debugQuote");
 
 const goalDisplay = document.getElementById("goalDisplay");
 const goalBar = document.getElementById("goalBar");
@@ -306,14 +305,6 @@ function renderFortune(data){
   requestAnimationFrame(() => {
     goalBar.style.width = data.goalSuccessRate + "%";
   });
-
-  debugQuote.textContent =
-`[생성 근거 요약]
-- seed: ${data.seed} (입력값 기반 결정론)
-- 입력: ${data.seedStr}
-- 별자리: ${data.zodiac} / 띠: ${data.cz} / 라이프패스: ${data.lp}
-- 올해 키워드: ${data.tone.key} / 포커스: ${data.focus}
-- 목표 달성 확률: ${data.goalSuccessRate}%`;
 
   resultCard.style.display = "block";
   resultCard.scrollIntoView({ behavior:"smooth", block:"start" });
